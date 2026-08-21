@@ -1,0 +1,17 @@
+.godot/
+tools/
+bin/
+obj/
+home*/
+cleanhome*
+dotnet_home*
+NuGet/
+*.csproj.user
+*.sln
+*.log
+*-source.zip
+nuget_packages/
+nuget_cache/
+dotnet_home/
+cleanhome/
+msbuild_sdks/

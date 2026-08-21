@@ -1,0 +1,22 @@
+<Project Sdk="Godot.NET.Sdk/4.7.2">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <EnableDynamicLoading>true</EnableDynamicLoading>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <EnableDefaultEmbeddedResourceItems>false</EnableDefaultEmbeddedResourceItems>
+    <EnableDefaultContentItems>false</EnableDefaultContentItems>
+    <RootNamespace>FairyCorruptionTD</RootNamespace>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="scripts\InputSettings.cs" />
+    <Compile Include="scripts\Enemy.cs" />
+    <Compile Include="scripts\Player.cs" />
+    <Compile Include="scripts\Projectile.cs" />
+    <Compile Include="scripts\SpellBurst.cs" />
+    <Compile Include="scripts\Tower.cs" />
+    <Compile Include="scripts\KeybindMenu.cs" />
+    <Compile Include="scripts\Main.cs" />
+  </ItemGroup>
+</Project>
