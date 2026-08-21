@@ -72,7 +72,7 @@ public partial class Tower : Node2D
             if (target != null)
             {
                 Fire(target);
-                _timer = Cooldown;
+                _timer = GetAttackCooldown();
             }
         }
     }
@@ -102,7 +102,7 @@ public partial class Tower : Node2D
         Projectile projectile = new()
         {
             Target = target,
-            Damage = Damage,
+            Damage = GetDamageAgainst(target),
             TravelSpeed = 350f,
             Radius = Type == TowerType.Thunder ? 7f : 5f,
             ProjectileColor = _color,
@@ -119,6 +119,28 @@ public partial class Tower : Node2D
         };
         GetTree().CurrentScene.AddChild(projectile);
         projectile.GlobalPosition = GlobalPosition;
+    }
+
+    private float GetDamageAgainst(Enemy target)
+    {
+        if (Type == TowerType.Fire && target.IsFrozen)
+            return Damage * GameBalance.FireDamageVsFrozenMultiplier;
+
+        return Damage;
+    }
+
+    private double GetAttackCooldown()
+    {
+        if (Type != TowerType.Nature)
+            return Cooldown;
+
+        foreach (Node node in GetTree().GetNodesInGroup("thorn_auras"))
+        {
+            if (node is ThornAura aura && IsInstanceValid(aura) && aura.Contains(GlobalPosition))
+                return Cooldown * GameBalance.NatureCooldownInsideThornMultiplier;
+        }
+
+        return Cooldown;
     }
 
     public override void _Draw()

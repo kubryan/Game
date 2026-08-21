@@ -189,6 +189,7 @@ public partial class Player : Node2D
             {
                 enemy.TakeDamage(GameBalance.FrostPrisonDamage);
                 enemy.ApplySlow(GameBalance.FrostPrisonSlowMultiplier, GameBalance.FrostPrisonSlowDuration);
+                enemy.ApplyFreeze(GameBalance.FrostPrisonSlowDuration);
             }
         }
         SpawnBurst(new Color("#b2e9ff"), range);
@@ -223,6 +224,9 @@ public partial class Player : Node2D
                 enemy.ApplySlow(GameBalance.ThornBloomSlowMultiplier, GameBalance.ThornBloomSlowDuration);
             }
         }
+        ThornAura aura = new();
+        GetTree().CurrentScene.AddChild(aura);
+        aura.GlobalPosition = GlobalPosition;
         SpawnBurst(new Color("#9de89b"), range);
     }
 

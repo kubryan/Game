@@ -38,6 +38,9 @@ public static class GameBalance
     public const float ThornBloomDamage = 26f;
     public const float ThornBloomSlowMultiplier = 0.6f;
     public const float ThornBloomSlowDuration = 2.5f;
+    public const double ThornBloomAuraDuration = 3.5;
+    public const float FireDamageVsFrozenMultiplier = 1.5f;
+    public const float NatureCooldownInsideThornMultiplier = 0.65f;
 
     public static readonly float[] SpellCosts = { 18f, 26f, 34f, 22f };
     public static readonly double[] SpellCooldowns = { 0.8, 5.5, 8.0, 6.0 };

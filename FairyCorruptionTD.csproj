@@ -15,6 +15,7 @@
     <Compile Include="scripts\Player.cs" />
     <Compile Include="scripts\Projectile.cs" />
     <Compile Include="scripts\FloatingText.cs" />
+    <Compile Include="scripts\ThornAura.cs" />
     <Compile Include="scripts\SpellBurst.cs" />
     <Compile Include="scripts\Tower.cs" />
     <Compile Include="scripts\KeybindMenu.cs" />

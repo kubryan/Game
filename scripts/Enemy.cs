@@ -17,6 +17,7 @@ public partial class Enemy : Node2D
 
     private Vector2 _targetPosition;
     private double _slowTimeRemaining;
+    private double _freezeTimeRemaining;
     private float _slowMultiplier = 1f;
     private bool _reachedCore;
 
@@ -43,6 +44,13 @@ public partial class Enemy : Node2D
     {
         if (_reachedCore)
             return;
+
+        if (_freezeTimeRemaining > 0)
+        {
+            _freezeTimeRemaining -= delta;
+            QueueRedraw();
+            return;
+        }
 
         if (_slowTimeRemaining > 0)
             _slowTimeRemaining -= delta;
@@ -88,6 +96,13 @@ public partial class Enemy : Node2D
         QueueRedraw();
     }
 
+    public void ApplyFreeze(float duration)
+    {
+        _freezeTimeRemaining = Mathf.Max(_freezeTimeRemaining, duration);
+        QueueRedraw();
+    }
+
+    public bool IsFrozen => _freezeTimeRemaining > 0;
     public bool HasReachedCore => _reachedCore;
 
     public override void _Draw()
@@ -100,7 +115,9 @@ public partial class Enemy : Node2D
         DrawCircle(new Vector2(6, -3), 1.5f, new Color("#281b3d"));
         DrawArc(Vector2.Zero, 12f, 0.2f, Mathf.Pi - 0.2f, 14, new Color("#2b1b3a"), 2f);
 
-        if (_slowTimeRemaining > 0)
+        if (IsFrozen)
+            DrawArc(Vector2.Zero, 25f, 0, Mathf.Tau, 24, new Color("#e4fbff"), 4f);
+        else if (_slowTimeRemaining > 0)
             DrawArc(Vector2.Zero, 23f, 0, Mathf.Tau, 24, new Color("#aeeaff"), 3f);
 
         float healthRatio = MaxHealth <= 0 ? 0 : Health / MaxHealth;
