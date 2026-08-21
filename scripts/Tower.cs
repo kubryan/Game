@@ -83,8 +83,9 @@ public partial class Tower : Node2D
         float distance = Range;
         foreach (Node node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is not Enemy enemy || !IsInstanceValid(enemy))
+                        if (node is not Enemy enemy || !IsInstanceValid(enemy) || enemy.HasReachedCore)
                 continue;
+
             float current = GlobalPosition.DistanceTo(enemy.GlobalPosition);
             if (current < distance)
             {
@@ -97,20 +98,27 @@ public partial class Tower : Node2D
 
     private void Fire(Enemy target)
     {
-        Projectile projectile = new()
+                Projectile projectile = new()
         {
             Target = target,
             Damage = Damage,
             TravelSpeed = 350f,
             Radius = Type == TowerType.Thunder ? 7f : 5f,
             ProjectileColor = _color,
+            ImpactSlowMultiplier = Type == TowerType.Frost
+                ? GameBalance.FrostSlowMultiplier
+                : Type == TowerType.Nature
+                    ? GameBalance.NatureSlowMultiplier
+                    : 1f,
+            ImpactSlowDuration = Type == TowerType.Frost
+                ? GameBalance.FrostSlowDuration
+                : Type == TowerType.Nature
+                    ? GameBalance.NatureSlowDuration
+                    : 0f,
         };
         GetTree().CurrentScene.AddChild(projectile);
         projectile.GlobalPosition = GlobalPosition;
-        if (Type == TowerType.Frost)
-            target.ApplySlow(0.65f, 1.2f);
-        else if (Type == TowerType.Nature)
-            target.ApplySlow(0.82f, 1.5f);
+
     }
 
     public override void _Draw()

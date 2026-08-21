@@ -29,6 +29,10 @@ public static class GameBalance
     public const float SpawnIntervalStart = 1.25f;
     public const float SpawnIntervalFloor = 0.38f;
     public const float SpawnIntervalReductionPerWave = 0.08f;
+    public const float FrostSlowMultiplier = 0.65f;
+    public const float FrostSlowDuration = 1.2f;
+    public const float NatureSlowMultiplier = 0.82f;
+    public const float NatureSlowDuration = 1.5f;
     public const double InitialWaveDelay = 1.5;
     public const double InterWaveDelay = 3.2;
 

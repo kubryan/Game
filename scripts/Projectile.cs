@@ -6,6 +6,8 @@ public partial class Projectile : Node2D
     public float Damage { get; set; } = 10f;
     public float TravelSpeed { get; set; } = 420f;
     public float Radius { get; set; } = 5f;
+    public float ImpactSlowMultiplier { get; set; } = 1f;
+    public float ImpactSlowDuration { get; set; }
     public Color ProjectileColor { get; set; } = Colors.White;
 
     private double _lifeRemaining = 2.5;
@@ -21,11 +23,20 @@ public partial class Projectile : Node2D
 
         Vector2 direction = GlobalPosition.DirectionTo(Target.GlobalPosition);
         GlobalPosition += direction * TravelSpeed * (float)delta;
+                if (Target.HasReachedCore)
+        {
+            QueueFree();
+            return;
+        }
+
         if (GlobalPosition.DistanceTo(Target.GlobalPosition) <= Radius + 16f)
         {
             Target.TakeDamage(Damage);
+            if (ImpactSlowDuration > 0 && IsInstanceValid(Target) && !Target.HasReachedCore)
+                Target.ApplySlow(ImpactSlowMultiplier, ImpactSlowDuration);
             QueueFree();
         }
+
         QueueRedraw();
     }
 
