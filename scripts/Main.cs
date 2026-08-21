@@ -286,6 +286,7 @@ public partial class Main : Node2D
         float speed = GameBalance.BaseEnemySpeed
             + _wave * GameBalance.EnemySpeedPerWave
             + _level.EnemySpeedBonus;
+        float damageToCore = GameBalance.BaseEnemyDamageToCore + _level.CoreDamageBonus;
 
         Color[] enemyColors =
         {
@@ -301,7 +302,8 @@ public partial class Main : Node2D
             health,
             speed,
             enemyColors[_random.RandiRange(0, enemyColors.Length - 1)],
-            "縫合妖怪");
+            "縫合妖怪",
+            damageToCore);
         enemy.Defeated += OnEnemyDefeated;
     }
 

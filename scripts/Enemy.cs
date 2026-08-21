@@ -8,7 +8,8 @@ public partial class Enemy : Node2D
     public float Health { get; private set; } = 42f;
     public float MaxHealth { get; private set; } = 42f;
     public float Speed { get; set; } = 38f;
-    public float DamageToCore { get; set; } = 8f;
+        public float DamageToCore { get; private set; } = GameBalance.BaseEnemyDamageToCore;
+
     public Color BodyColor { get; set; } = new("#6b3f86");
     public string DisplayName { get; set; } = "紙眼童";
 
@@ -17,14 +18,23 @@ public partial class Enemy : Node2D
     private float _slowMultiplier = 1f;
     private bool _reachedCore;
 
-    public void Configure(Vector2 targetPosition, float health, float speed, Color bodyColor, string displayName)
+        public void Configure(
+        Vector2 targetPosition,
+        float health,
+        float speed,
+        Color bodyColor,
+        string displayName,
+        float damageToCore = GameBalance.BaseEnemyDamageToCore)
+
     {
         _targetPosition = targetPosition;
         MaxHealth = health;
         Health = health;
-        Speed = speed;
+                Speed = speed;
+        DamageToCore = damageToCore;
         BodyColor = bodyColor;
         DisplayName = displayName;
+
         AddToGroup("enemies");
         QueueRedraw();
     }
