@@ -90,9 +90,11 @@ public partial class InputSettings : Node
                 PhysicalKeycode = pair.Value,
                 Pressed = false,
             };
-            InputMap.ActionAddEvent(pair.Key, keyEvent);
+                        InputMap.ActionAddEvent(pair.Key, keyEvent);
+            _bindings[pair.Key] = pair.Value;
         }
         _config.Save(BindingFile);
+
     }
 
     private void LoadBindings()
