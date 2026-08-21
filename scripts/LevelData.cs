@@ -11,6 +11,33 @@ public static class GameBalance
     public const int SpellCount = 4;
     public const int TowerTypeCount = 4;
 
+    public const float PlayerMaxMana = 100f;
+    public const float PlayerMoveSpeed = 210f;
+    public const float PlayerAutoAttackRange = 260f;
+    public const float PlayerAutoAttackDamage = 12f;
+    public const double PlayerAutoAttackCooldown = 0.62;
+    public const float PlayerManaRegenPerSecond = 7f;
+
+    public const float EmberMissileRange = 420f;
+    public const float EmberMissileDamage = 34f;
+    public const float EmberMissileTravelSpeed = 610f;
+    public const float EmberMissileRadius = 9f;
+    public const float FrostPrisonRange = 170f;
+    public const float FrostPrisonDamage = 12f;
+    public const float FrostPrisonSlowMultiplier = 0.35f;
+    public const float FrostPrisonSlowDuration = 4.5f;
+    public const float ThunderJudgementRange = 430f;
+    public const float ThunderJudgementDamage = 68f;
+    public const float ThunderJudgementSplashRange = 105f;
+    public const float ThunderJudgementSplashDamage = 24f;
+    public const float ThornBloomRange = 145f;
+    public const float ThornBloomDamage = 26f;
+    public const float ThornBloomSlowMultiplier = 0.6f;
+    public const float ThornBloomSlowDuration = 2.5f;
+
+    public static readonly float[] SpellCosts = { 18f, 26f, 34f, 22f };
+    public static readonly double[] SpellCooldowns = { 0.8, 5.5, 8.0, 6.0 };
+
     public const int StartingEssence = 180;
     public const int TowerBuildCost = 40;
     public const int EssencePerEnemy = 14;

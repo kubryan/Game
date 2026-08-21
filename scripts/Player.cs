@@ -12,10 +12,13 @@ public partial class Player : Node2D
     [Signal]
     public delegate void CombatMessageEventHandler(string message);
 
-    public float Mana { get; private set; } = 100f;
-    public float MaxMana { get; private set; } = 100f;
-    public float AutoAttackRange { get; set; } = 260f;
-    public float AutoAttackDamage { get; set; } = 12f;
+    private static readonly string[] SpellNames =
+    {
+        "餘燼飛彈",
+        "霜花禁錮",
+        "雷鳴裁決",
+        "荊棘新生",
+    };
 
     private readonly string[] _spellActions =
     {
@@ -25,17 +28,10 @@ public partial class Player : Node2D
         InputSettings.Spell4,
     };
 
-    private readonly string[] _spellNames =
-    {
-        "餘燼飛彈",
-        "霜花禁錮",
-        "雷鳴裁決",
-        "荊棘新生",
-    };
+    private readonly double[] _spellTimers = new double[GameBalance.SpellCount];
 
-    private readonly float[] _spellCosts = { 18f, 26f, 34f, 22f };
-    private readonly double[] _spellCooldowns = { 0.8, 5.5, 8.0, 6.0 };
-    private readonly double[] _spellTimers = { 0, 0, 0, 0 };
+    public float Mana { get; private set; } = GameBalance.PlayerMaxMana;
+    public float MaxMana { get; private set; } = GameBalance.PlayerMaxMana;
 
     private double _attackTimer;
     private Vector2 _facing = Vector2.Right;
@@ -48,77 +44,108 @@ public partial class Player : Node2D
 
     public override void _Process(double delta)
     {
-        Vector2 movement = Input.GetVector(InputSettings.MoveLeft, InputSettings.MoveRight, InputSettings.MoveUp, InputSettings.MoveDown);
+        ProcessMovement(delta);
+        UpdateTimers(delta);
+        RegenerateMana(delta);
+        ProcessAutoAttack();
+        ProcessSpellInputs();
+
+        QueueRedraw();
+    }
+
+    private void ProcessMovement(double delta)
+    {
+        Vector2 movement = Input.GetVector(
+            InputSettings.MoveLeft,
+            InputSettings.MoveRight,
+            InputSettings.MoveUp,
+            InputSettings.MoveDown);
+
         if (movement.LengthSquared() > 0.01f)
         {
             _facing = movement.Normalized();
-            GlobalPosition += movement.Normalized() * 210f * (float)delta;
+            GlobalPosition += movement.Normalized() * GameBalance.PlayerMoveSpeed * (float)delta;
         }
 
         GlobalPosition = new Vector2(
             Mathf.Clamp(GlobalPosition.X, 80f, 1200f),
             Mathf.Clamp(GlobalPosition.Y, 100f, 650f));
+    }
 
+    private void UpdateTimers(double delta)
+    {
         _attackTimer -= delta;
         for (int index = 0; index < _spellTimers.Length; index++)
-            _spellTimers[index] -= delta;
-
-        Mana = Mathf.Min(MaxMana, Mana + 7f * (float)delta);
-        EmitSignal(SignalName.ManaChanged, Mana, MaxMana);
-
-        if (_attackTimer <= 0)
         {
-            Enemy? target = FindNearestEnemy(AutoAttackRange);
-            if (target != null)
-            {
-                FireAutoAttack(target);
-                _attackTimer = 0.62;
-            }
+            if (_spellTimers[index] > 0)
+                _spellTimers[index] -= delta;
         }
+    }
 
+    private void RegenerateMana(double delta)
+    {
+        Mana = Mathf.Min(MaxMana, Mana + GameBalance.PlayerManaRegenPerSecond * (float)delta);
+        EmitSignal(SignalName.ManaChanged, Mana, MaxMana);
+    }
+
+    private void ProcessAutoAttack()
+    {
+        if (_attackTimer > 0)
+            return;
+
+        Enemy? target = FindNearestEnemy(GameBalance.PlayerAutoAttackRange);
+        if (target != null)
+        {
+            FireAutoAttack(target);
+            _attackTimer = GameBalance.PlayerAutoAttackCooldown;
+        }
+    }
+
+    private void ProcessSpellInputs()
+    {
         for (int slot = 0; slot < _spellActions.Length; slot++)
         {
             if (Input.IsActionJustPressed(_spellActions[slot]))
                 TryCastSpell(slot);
         }
-        QueueRedraw();
     }
 
     public void TryCastSpell(int slot)
     {
         if (slot < 0 || slot >= _spellActions.Length || _spellTimers[slot] > 0)
             return;
-        if (Mana < _spellCosts[slot])
+
+        float cost = GameBalance.SpellCosts[slot];
+        if (Mana < cost)
         {
-            EmitSignal(SignalName.CombatMessage, "法力不足，無法施放「" + _spellNames[slot] + "」");
+            EmitSignal(SignalName.CombatMessage, $"法力不足，無法施放「{SpellNames[slot]}」");
             return;
         }
 
-        Mana -= _spellCosts[slot];
-        _spellTimers[slot] = _spellCooldowns[slot];
-        EmitSignal(SignalName.SpellCast, slot, _spellNames[slot]);
+        Mana -= cost;
+        _spellTimers[slot] = GameBalance.SpellCooldowns[slot];
+        EmitSignal(SignalName.SpellCast, slot, SpellNames[slot]);
         EmitSignal(SignalName.ManaChanged, Mana, MaxMana);
 
+        ExecuteSpellEffect(slot);
+    }
+
+    private void ExecuteSpellEffect(int slot)
+    {
         switch (slot)
         {
-            case 0:
-                CastEmberMissile();
-                break;
-            case 1:
-                CastFrostPrison();
-                break;
-            case 2:
-                CastThunderJudgement();
-                break;
-            case 3:
-                CastThornBloom();
-                break;
+            case 0: CastEmberMissile(); break;
+            case 1: CastFrostPrison(); break;
+            case 2: CastThunderJudgement(); break;
+            case 3: CastThornBloom(); break;
         }
     }
 
     public double GetSpellCooldown(int slot)
     {
-        return slot >= 0 && slot < _spellTimers.Length ? Mathf.Max(0, (float)_spellTimers[slot]) : 0;
+        return slot >= 0 && slot < _spellTimers.Length
+            ? Mathf.Max(0, (float)_spellTimers[slot])
+            : 0;
     }
 
     private void FireAutoAttack(Enemy target)
@@ -127,7 +154,7 @@ public partial class Player : Node2D
         Projectile projectile = new()
         {
             Target = target,
-            Damage = AutoAttackDamage,
+            Damage = GameBalance.PlayerAutoAttackDamage,
             ProjectileColor = new Color("#ffe38b"),
             TravelSpeed = 430f,
         };
@@ -137,17 +164,17 @@ public partial class Player : Node2D
 
     private void CastEmberMissile()
     {
-        Enemy? target = FindNearestEnemy(420f);
+        Enemy? target = FindNearestEnemy(GameBalance.EmberMissileRange);
         if (target == null)
             return;
 
         Projectile projectile = new()
         {
             Target = target,
-            Damage = 34f,
+            Damage = GameBalance.EmberMissileDamage,
             ProjectileColor = new Color("#ff9d70"),
-            TravelSpeed = 610f,
-            Radius = 9f,
+            TravelSpeed = GameBalance.EmberMissileTravelSpeed,
+            Radius = GameBalance.EmberMissileRadius,
         };
         GetTree().CurrentScene.AddChild(projectile);
         projectile.GlobalPosition = GlobalPosition;
@@ -155,43 +182,48 @@ public partial class Player : Node2D
 
     private void CastFrostPrison()
     {
+        float range = GameBalance.FrostPrisonRange;
         foreach (Node node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is Enemy enemy && GlobalPosition.DistanceTo(enemy.GlobalPosition) <= 170f)
+            if (node is Enemy enemy && GlobalPosition.DistanceTo(enemy.GlobalPosition) <= range)
             {
-                enemy.TakeDamage(12f);
-                enemy.ApplySlow(0.35f, 4.5f);
+                enemy.TakeDamage(GameBalance.FrostPrisonDamage);
+                enemy.ApplySlow(GameBalance.FrostPrisonSlowMultiplier, GameBalance.FrostPrisonSlowDuration);
             }
         }
-        SpawnBurst(new Color("#b2e9ff"), 170f);
+        SpawnBurst(new Color("#b2e9ff"), range);
     }
 
     private void CastThunderJudgement()
     {
-        Enemy? target = FindNearestEnemy(430f);
+        Enemy? target = FindNearestEnemy(GameBalance.ThunderJudgementRange);
         if (target == null)
             return;
 
-        target.TakeDamage(68f);
+        target.TakeDamage(GameBalance.ThunderJudgementDamage);
+        float splashRange = GameBalance.ThunderJudgementSplashRange;
         foreach (Node node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is Enemy enemy && enemy != target && target.GlobalPosition.DistanceTo(enemy.GlobalPosition) <= 105f)
-                enemy.TakeDamage(24f);
+            if (node is Enemy enemy && enemy != target && target.GlobalPosition.DistanceTo(enemy.GlobalPosition) <= splashRange)
+            {
+                enemy.TakeDamage(GameBalance.ThunderJudgementSplashDamage);
+            }
         }
         SpawnBurst(new Color("#d4bcff"), 120f);
     }
 
     private void CastThornBloom()
     {
+        float range = GameBalance.ThornBloomRange;
         foreach (Node node in GetTree().GetNodesInGroup("enemies"))
         {
-            if (node is Enemy enemy && GlobalPosition.DistanceTo(enemy.GlobalPosition) <= 145f)
+            if (node is Enemy enemy && GlobalPosition.DistanceTo(enemy.GlobalPosition) <= range)
             {
-                enemy.TakeDamage(26f);
-                enemy.ApplySlow(0.6f, 2.5f);
+                enemy.TakeDamage(GameBalance.ThornBloomDamage);
+                enemy.ApplySlow(GameBalance.ThornBloomSlowMultiplier, GameBalance.ThornBloomSlowDuration);
             }
         }
-        SpawnBurst(new Color("#9de89b"), 145f);
+        SpawnBurst(new Color("#9de89b"), range);
     }
 
     private void SpawnBurst(Color color, float radius)
