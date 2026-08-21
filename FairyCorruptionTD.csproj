@@ -17,10 +17,9 @@
     <Compile Include="scripts\SpellBurst.cs" />
     <Compile Include="scripts\Tower.cs" />
     <Compile Include="scripts\KeybindMenu.cs" />
-        <Compile Include="scripts\Main.cs" />
+    <Compile Include="scripts\Main.cs" />
     <Compile Include="scripts\LevelData.cs" />
     <Compile Include="scripts\ProgressManager.cs" />
     <Compile Include="scripts\LevelSelect.cs" />
-
   </ItemGroup>
 </Project>

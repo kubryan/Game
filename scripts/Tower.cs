@@ -45,6 +45,7 @@ public partial class Tower : Node2D
                 Cooldown = 1.4;
                 break;
         }
+
         QueueRedraw();
     }
 
@@ -54,7 +55,7 @@ public partial class Tower : Node2D
         QueueRedraw();
     }
 
-        public void StopAttacking()
+    public void StopAttacking()
     {
         _combatActive = false;
     }
@@ -65,7 +66,6 @@ public partial class Tower : Node2D
             return;
 
         _timer -= delta;
-
         if (_timer <= 0)
         {
             Enemy? target = FindNearestEnemy();
@@ -83,7 +83,7 @@ public partial class Tower : Node2D
         float distance = Range;
         foreach (Node node in GetTree().GetNodesInGroup("enemies"))
         {
-                        if (node is not Enemy enemy || !IsInstanceValid(enemy) || enemy.HasReachedCore)
+            if (node is not Enemy enemy || !IsInstanceValid(enemy) || enemy.HasReachedCore)
                 continue;
 
             float current = GlobalPosition.DistanceTo(enemy.GlobalPosition);
@@ -93,12 +93,13 @@ public partial class Tower : Node2D
                 distance = current;
             }
         }
+
         return closest;
     }
 
     private void Fire(Enemy target)
     {
-                Projectile projectile = new()
+        Projectile projectile = new()
         {
             Target = target,
             Damage = Damage,
@@ -118,7 +119,6 @@ public partial class Tower : Node2D
         };
         GetTree().CurrentScene.AddChild(projectile);
         projectile.GlobalPosition = GlobalPosition;
-
     }
 
     public override void _Draw()

@@ -1,5 +1,4 @@
 using Godot;
-using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -42,12 +41,16 @@ public partial class InputSettings : Node
 
     public Key GetBinding(string actionName)
     {
-        return _bindings.TryGetValue(actionName, out Key key) ? key : GetDefault(actionName);
+        return _bindings.TryGetValue(actionName, out Key key)
+            ? key
+            : GetDefault(actionName);
     }
 
     public Key GetDefault(string actionName)
     {
-        return _defaults.TryGetValue(actionName, out Key key) ? key : Key.None;
+        return _defaults.TryGetValue(actionName, out Key key)
+            ? key
+            : Key.None;
     }
 
     public string GetBindingText(string actionName)
@@ -81,20 +84,22 @@ public partial class InputSettings : Node
     {
         _config = new ConfigFile();
         _bindings.Clear();
+
         foreach (KeyValuePair<string, Key> pair in _defaults)
         {
             EnsureAction(pair.Key);
             InputMap.ActionEraseEvents(pair.Key);
+
             InputEventKey keyEvent = new()
             {
                 PhysicalKeycode = pair.Value,
                 Pressed = false,
             };
-                        InputMap.ActionAddEvent(pair.Key, keyEvent);
+            InputMap.ActionAddEvent(pair.Key, keyEvent);
             _bindings[pair.Key] = pair.Value;
         }
-        _config.Save(BindingFile);
 
+        _config.Save(BindingFile);
     }
 
     private void LoadBindings()
@@ -112,6 +117,7 @@ public partial class InputSettings : Node
             _bindings[pair.Key] = key;
             EnsureAction(pair.Key);
             InputMap.ActionEraseEvents(pair.Key);
+
             InputEventKey keyEvent = new()
             {
                 PhysicalKeycode = key,
