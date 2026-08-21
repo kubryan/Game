@@ -1,6 +1,46 @@
 using Godot;
 using System.Collections.Generic;
 
+public static class GameBalance
+{
+    public const ulong RandomSeed = 87321;
+    public const int ViewportWidth = 1280;
+    public const int ViewportHeight = 720;
+    public const int HeaderHeight = 86;
+    public const int FooterY = 665;
+    public const int SpellCount = 4;
+    public const int TowerTypeCount = 4;
+
+    public const int StartingEssence = 180;
+    public const int TowerBuildCost = 40;
+    public const int EssencePerEnemy = 14;
+    public const float StartingCoreHealth = 100f;
+    public const float CoreBuildRadius = 82f;
+    public const float BuildAreaMinY = 100f;
+    public const float BuildAreaMaxY = 625f;
+
+    public const int BaseEnemiesPerWave = 5;
+    public const int AdditionalEnemiesPerWave = 2;
+    public const float BaseEnemyHealth = 28f;
+    public const float EnemyHealthPerWave = 8f;
+    public const float BaseEnemySpeed = 35f;
+    public const float EnemySpeedPerWave = 2.5f;
+    public const float InitialSpawnDelay = 0.6f;
+    public const float SpawnIntervalStart = 1.25f;
+    public const float SpawnIntervalFloor = 0.38f;
+    public const float SpawnIntervalReductionPerWave = 0.08f;
+    public const double InitialWaveDelay = 1.5;
+    public const double InterWaveDelay = 3.2;
+
+    public static readonly Vector2[] SpawnPoints =
+    {
+        new(1120, 165),
+        new(1120, 290),
+        new(1120, 470),
+        new(1120, 575),
+    };
+}
+
 public sealed class LevelDefinition
 {
     public int Id { get; }
@@ -12,7 +52,15 @@ public sealed class LevelDefinition
     public float EnemyHealthBonus { get; }
     public float EnemySpeedBonus { get; }
 
-    public LevelDefinition(int id, string title, string subtitle, string description, Color accent, int waves, float enemyHealthBonus, float enemySpeedBonus)
+    public LevelDefinition(
+        int id,
+        string title,
+        string subtitle,
+        string description,
+        Color accent,
+        int waves,
+        float enemyHealthBonus,
+        float enemySpeedBonus)
     {
         Id = id;
         Title = title;
@@ -45,6 +93,7 @@ public static class LevelCatalog
             if (definition.Id == id)
                 return definition;
         }
+
         return Definitions[0];
     }
 }

@@ -3,9 +3,19 @@ using System;
 
 public partial class Main : Node2D
 {
-        private Player _player = null!;
-    private LevelDefinition _level = null!;
+    private static readonly string[] SpellNames =
+    {
+        "餘燼飛彈",
+        "霜花禁錮",
+        "雷鳴裁決",
+        "荊棘新生",
+    };
 
+    private readonly RandomNumberGenerator _random = new();
+    private readonly Vector2 _corePosition = new(640, 365);
+
+    private Player _player = null!;
+    private LevelDefinition _level = null!;
     private KeybindMenu _keybindMenu = null!;
     private Label _statusLabel = null!;
     private Label _waveLabel = null!;
@@ -13,24 +23,22 @@ public partial class Main : Node2D
     private Label _coreLabel = null!;
     private Label _messageLabel = null!;
     private Label[] _spellLabels = Array.Empty<Label>();
-
-    private readonly RandomNumberGenerator _random = new();
     private Texture2D? _backgroundTexture;
-    private readonly Vector2 _corePosition = new(640, 365);
-    private float _coreHealth = 100f;
+
+    private float _coreHealth = GameBalance.StartingCoreHealth;
     private int _wave;
     private int _spawnedThisWave;
     private int _enemiesPerWave;
+    private int _essence = GameBalance.StartingEssence;
     private double _spawnTimer;
-    private double _nextWaveTimer = 1.5;
+    private double _nextWaveTimer = GameBalance.InitialWaveDelay;
     private double _messageTimer;
     private bool _waveInProgress;
     private bool _finished;
-    private int _essence = 180;
 
-        public override void _Ready()
+    public override void _Ready()
     {
-        _random.Seed = 87321;
+        _random.Seed = GameBalance.RandomSeed;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         _level = LevelCatalog.Get(progress.SelectedLevel);
         _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target.png");
@@ -46,42 +54,8 @@ public partial class Main : Node2D
         if (_finished)
             return;
 
-        if (_messageTimer > 0)
-        {
-            _messageTimer -= delta;
-            if (_messageTimer <= 0)
-                _messageLabel.Text = "守住希望篝火，別讓夜色吞掉森林。";
-        }
-
-        if (_waveInProgress)
-        {
-            _spawnTimer -= delta;
-            if (_spawnedThisWave < _enemiesPerWave && _spawnTimer <= 0)
-            {
-                SpawnEnemy();
-                _spawnedThisWave++;
-                _spawnTimer = Mathf.Max(0.38f, 1.25f - _wave * 0.08f);
-            }
-
-            if (_spawnedThisWave >= _enemiesPerWave && GetTree().GetNodesInGroup("enemies").Count == 0)
-            {
-                _waveInProgress = false;
-                if (_wave >= _level.Waves)
-                {
-                    CompleteLevel();
-                    return;
-                }
-
-                _nextWaveTimer = 3.2;
-                ShowMessage($"第 {_wave} 波守住了。下一波妖氣將在 3 秒後湧來。", 3.2);
-            }
-        }
-        else if (_wave < _level.Waves)
-        {
-            _nextWaveTimer -= delta;
-            if (_nextWaveTimer <= 0)
-                StartNextWave();
-        }
+        UpdateMessageTimer(delta);
+        ProcessWave(delta);
 
         if (_player != null)
             UpdateSpellLabels();
@@ -100,7 +74,7 @@ public partial class Main : Node2D
                 return;
             }
 
-                        if (keyEvent.Keycode == Key.F2)
+            if (keyEvent.Keycode == Key.F2)
             {
                 GetTree().ReloadCurrentScene();
                 GetViewport().SetInputAsHandled();
@@ -115,7 +89,6 @@ public partial class Main : Node2D
             }
 
             if (keyEvent.Keycode == Key.Escape && _keybindMenu.Visible)
-
             {
                 _keybindMenu.Visible = false;
                 GetViewport().SetInputAsHandled();
@@ -131,6 +104,60 @@ public partial class Main : Node2D
             TryBuildTower(GetGlobalMousePosition());
             GetViewport().SetInputAsHandled();
         }
+    }
+
+    private void UpdateMessageTimer(double delta)
+    {
+        if (_messageTimer <= 0)
+            return;
+
+        _messageTimer -= delta;
+        if (_messageTimer <= 0)
+            _messageLabel.Text = "守住希望篝火，別讓夜色吞掉森林。";
+    }
+
+    private void ProcessWave(double delta)
+    {
+        if (_waveInProgress)
+        {
+            ProcessActiveWave(delta);
+            return;
+        }
+
+        if (_wave >= _level.Waves)
+            return;
+
+        _nextWaveTimer -= delta;
+        if (_nextWaveTimer <= 0)
+            StartNextWave();
+    }
+
+    private void ProcessActiveWave(double delta)
+    {
+        _spawnTimer -= delta;
+        if (_spawnedThisWave < _enemiesPerWave && _spawnTimer <= 0)
+        {
+            SpawnEnemy();
+            _spawnedThisWave++;
+            _spawnTimer = Mathf.Max(
+                GameBalance.SpawnIntervalFloor,
+                GameBalance.SpawnIntervalStart - _wave * GameBalance.SpawnIntervalReductionPerWave);
+        }
+
+        bool allEnemiesSpawned = _spawnedThisWave >= _enemiesPerWave;
+        bool noEnemiesRemain = GetTree().GetNodesInGroup("enemies").Count == 0;
+        if (!allEnemiesSpawned || !noEnemiesRemain)
+            return;
+
+        _waveInProgress = false;
+        if (_wave >= _level.Waves)
+        {
+            CompleteLevel();
+            return;
+        }
+
+        _nextWaveTimer = GameBalance.InterWaveDelay;
+        ShowMessage($"第 {_wave} 波守住了。下一波妖氣將在 {GameBalance.InterWaveDelay:0} 秒後湧來。", GameBalance.InterWaveDelay);
     }
 
     private void CreatePlayer()
@@ -153,23 +180,29 @@ public partial class Main : Node2D
         ColorRect topBar = new()
         {
             Color = new Color("#211734"),
-            Position = new Vector2(0, 0),
-            Size = new Vector2(1280, 86),
+            Position = Vector2.Zero,
+            Size = new Vector2(GameBalance.ViewportWidth, GameBalance.HeaderHeight),
             MouseFilter = Control.MouseFilterEnum.Ignore,
         };
         canvas.AddChild(topBar);
 
-                _statusLabel = MakeLabel($"{_level.Title} · {_level.Subtitle}", new Vector2(28, 14), 22, new Color("#fff1b8"));
-
+        _statusLabel = MakeLabel(
+            $"{_level.Title} · {_level.Subtitle}",
+            new Vector2(28, 14),
+            22,
+            new Color("#fff1b8"));
         canvas.AddChild(_statusLabel);
+
         _waveLabel = MakeLabel("", new Vector2(28, 49), 15, new Color("#d7c6e9"));
         canvas.AddChild(_waveLabel);
+
         _manaLabel = MakeLabel("", new Vector2(450, 20), 17, new Color("#aeeaff"));
         canvas.AddChild(_manaLabel);
+
         _coreLabel = MakeLabel("", new Vector2(450, 50), 15, new Color("#ffb6c8"));
         canvas.AddChild(_coreLabel);
 
-                Button mapButton = new()
+        Button mapButton = new()
         {
             Text = "關卡地圖  F3",
             Position = new Vector2(880, 22),
@@ -187,13 +220,21 @@ public partial class Main : Node2D
         settingsButton.Pressed += () => _keybindMenu.Toggle();
         canvas.AddChild(settingsButton);
 
-        _messageLabel = MakeLabel("守住希望篝火，別讓夜色吞掉森林。", new Vector2(28, 665), 16, new Color("#ffe7b0"));
+        _messageLabel = MakeLabel(
+            "守住希望篝火，別讓夜色吞掉森林。",
+            new Vector2(28, GameBalance.FooterY),
+            16,
+            new Color("#ffe7b0"));
         canvas.AddChild(_messageLabel);
 
-        _spellLabels = new Label[4];
+        _spellLabels = new Label[GameBalance.SpellCount];
         for (int index = 0; index < _spellLabels.Length; index++)
         {
-            Label spell = MakeLabel("", new Vector2(760 + index * 125, 665), 14, new Color("#fff1b8"));
+            Label spell = MakeLabel(
+                "",
+                new Vector2(760 + index * 125, GameBalance.FooterY),
+                14,
+                new Color("#fff1b8"));
             spell.HorizontalAlignment = HorizontalAlignment.Center;
             spell.Size = new Vector2(115, 30);
             _spellLabels[index] = spell;
@@ -218,8 +259,7 @@ public partial class Main : Node2D
 
     private void StartNextWave()
     {
-                if (_wave >= _level.Waves)
-
+        if (_wave >= _level.Waves)
         {
             CompleteLevel();
             return;
@@ -227,9 +267,8 @@ public partial class Main : Node2D
 
         _wave++;
         _spawnedThisWave = 0;
-                _enemiesPerWave = 5 + _wave * 2;
-
-        _spawnTimer = 0.6;
+        _enemiesPerWave = GameBalance.BaseEnemiesPerWave + _wave * GameBalance.AdditionalEnemiesPerWave;
+        _spawnTimer = GameBalance.InitialSpawnDelay;
         _waveInProgress = true;
         ShowMessage($"第 {_wave} 波妖怪出現了。", 2.5);
     }
@@ -238,27 +277,31 @@ public partial class Main : Node2D
     {
         Enemy enemy = new();
         AddChild(enemy);
-        int lane = _random.RandiRange(0, 3);
-        Vector2 spawnPosition = lane switch
-        {
-            0 => new Vector2(1120, 165),
-            1 => new Vector2(1120, 290),
-            2 => new Vector2(1120, 470),
-            _ => new Vector2(1120, 575),
-        };
 
-                float health = 28f + _wave * 8f + _level.EnemyHealthBonus;
-        float speed = 35f + _wave * 2.5f + _level.EnemySpeedBonus;
+        int lane = _random.RandiRange(0, GameBalance.SpawnPoints.Length - 1);
+        Vector2 spawnPosition = GameBalance.SpawnPoints[lane];
+        float health = GameBalance.BaseEnemyHealth
+            + _wave * GameBalance.EnemyHealthPerWave
+            + _level.EnemyHealthBonus;
+        float speed = GameBalance.BaseEnemySpeed
+            + _wave * GameBalance.EnemySpeedPerWave
+            + _level.EnemySpeedBonus;
 
-        Color color = new[]
+        Color[] enemyColors =
         {
             new Color("#7b4f96"),
             new Color("#5e739f"),
             new Color("#9c5676"),
             new Color("#567e67"),
-        }[_random.RandiRange(0, 3)];
+        };
+
         enemy.GlobalPosition = spawnPosition;
-        enemy.Configure(_corePosition, health, speed, color, "縫合妖怪");
+        enemy.Configure(
+            _corePosition,
+            health,
+            speed,
+            enemyColors[_random.RandiRange(0, enemyColors.Length - 1)],
+            "縫合妖怪");
         enemy.Defeated += OnEnemyDefeated;
     }
 
@@ -270,32 +313,36 @@ public partial class Main : Node2D
             ShowMessage("妖怪碰到了希望篝火！", 2.2);
             if (_coreHealth <= 0)
                 FailLevel();
+            return;
         }
-        else
-        {
-            _essence += 14;
-        }
+
+        _essence += GameBalance.EssencePerEnemy;
     }
 
     private void TryBuildTower(Vector2 position)
     {
-        if (_essence < 40)
+        if (_essence < GameBalance.TowerBuildCost)
         {
             ShowMessage("星砂不足，還需要更多妖怪掉落的光屑。", 2.2);
             return;
         }
-        if (position.Y < 100 || position.Y > 625 || position.DistanceTo(_corePosition) < 82f)
+
+        bool outsideBuildArea = position.Y < GameBalance.BuildAreaMinY
+            || position.Y > GameBalance.BuildAreaMaxY;
+        bool tooCloseToCore = position.DistanceTo(_corePosition) < GameBalance.CoreBuildRadius;
+        if (outsideBuildArea || tooCloseToCore)
         {
             ShowMessage("這裡不能建造魔法塔。", 1.6);
             return;
         }
 
         Tower tower = new();
-        Tower.TowerType type = (Tower.TowerType)(GetTree().GetNodesInGroup("towers").Count % 4);
+        Tower.TowerType type = (Tower.TowerType)(
+            GetTree().GetNodesInGroup("towers").Count % GameBalance.TowerTypeCount);
         tower.Configure(type);
         tower.GlobalPosition = position;
         AddChild(tower);
-        _essence -= 40;
+        _essence -= GameBalance.TowerBuildCost;
         ShowMessage("魔法塔已建立。繼續守住這片還沒腐爛的森林。", 2.2);
     }
 
@@ -318,22 +365,26 @@ public partial class Main : Node2D
     {
         if (_waveLabel == null)
             return;
-                _waveLabel.Text = _waveInProgress ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    左鍵：建造塔" : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    整備中";
 
+        string phase = _waveInProgress ? "" : "整備中";
+        _waveLabel.Text = _waveInProgress
+            ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    左鍵：建造塔"
+            : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {phase}";
         _coreLabel.Text = $"希望篝火  {Mathf.Max(0, Mathf.RoundToInt(_coreHealth))}%";
     }
 
     private void UpdateSpellLabels()
     {
-        if (_spellLabels.Length != 4)
+        if (_spellLabels.Length != GameBalance.SpellCount)
             return;
+
         InputSettings settings = GetNode<InputSettings>("/root/InputSettings");
-        string[] names = { "餘燼飛彈", "霜花禁錮", "雷鳴裁決", "荊棘新生" };
-        for (int index = 0; index < 4; index++)
+        for (int index = 0; index < GameBalance.SpellCount; index++)
         {
             double cooldown = _player.GetSpellCooldown(index);
             string cooldownText = cooldown > 0 ? $"{cooldown:0.0}s" : "就緒";
-            _spellLabels[index].Text = $"{settings.GetBindingText($"spell_{index + 1}")}  {names[index]}\n{cooldownText}";
+            _spellLabels[index].Text =
+                $"{settings.GetBindingText($"spell_{index + 1}")}  {SpellNames[index]}\n{cooldownText}";
         }
     }
 
@@ -341,6 +392,7 @@ public partial class Main : Node2D
     {
         if (_messageLabel == null)
             return;
+
         _messageLabel.Text = message;
         _messageTimer = duration;
     }
@@ -351,7 +403,8 @@ public partial class Main : Node2D
         _finished = true;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         progress.CompleteLevel(_level.Id);
-        _messageLabel.Text = $"{_level.Title} 完成！下一個區域已解鎖。按 F2 重玩，按 F3 返回關卡地圖。";
+        _messageLabel.Text =
+            $"{_level.Title} 完成！下一個區域已解鎖。按 F2 重玩，按 F3 返回關卡地圖。";
     }
 
     private void FailLevel()
@@ -361,7 +414,7 @@ public partial class Main : Node2D
         _messageLabel.Text = "希望篝火熄滅了。按 F2 重新挑戰，按 F3 返回關卡地圖。";
     }
 
-        private void StopAllTowers()
+    private void StopAllTowers()
     {
         foreach (Node node in GetTree().GetNodesInGroup("towers"))
         {
@@ -371,11 +424,13 @@ public partial class Main : Node2D
     }
 
     public override void _Draw()
-
     {
         if (_backgroundTexture != null)
         {
-            DrawTextureRect(_backgroundTexture, new Rect2(0, 0, 1280, 720), false);
+            DrawTextureRect(
+                _backgroundTexture,
+                new Rect2(0, 0, GameBalance.ViewportWidth, GameBalance.ViewportHeight),
+                false);
             DrawCircle(_corePosition, 62f, new Color("#3f2b5c", 0.82f));
             DrawCircle(_corePosition, 46f, new Color("#fff0a5", 0.84f));
             DrawCircle(_corePosition, 29f, new Color("#ffd36e", 0.95f));
@@ -383,10 +438,13 @@ public partial class Main : Node2D
             return;
         }
 
-        DrawRect(new Rect2(0, 0, 1280, 720), new Color("#8dc9bb"));
-        DrawRect(new Rect2(0, 86, 1280, 550), new Color("#79b6a3"));
+        DrawRect(
+            new Rect2(0, 0, GameBalance.ViewportWidth, GameBalance.ViewportHeight),
+            new Color("#8dc9bb"));
+        DrawRect(
+            new Rect2(0, GameBalance.HeaderHeight, GameBalance.ViewportWidth, 550),
+            new Color("#79b6a3"));
 
-        // 童話道路逐漸被暗色藤蔓侵蝕。
         DrawLine(new Vector2(1120, 165), _corePosition, new Color("#eed8a2"), 52f, true);
         DrawLine(new Vector2(1120, 290), _corePosition, new Color("#f0dca8"), 48f, true);
         DrawLine(new Vector2(1120, 470), _corePosition, new Color("#e8d29c"), 48f, true);
@@ -401,14 +459,25 @@ public partial class Main : Node2D
             float x = 46 + (index * 83) % 1150;
             float y = 120 + (index * 67) % 480;
             DrawCircle(new Vector2(x, y), 16f, new Color("#5d987f"));
-            DrawLine(new Vector2(x, y + 10), new Vector2(x + 8, y + 28), new Color("#3f765f"), 4f);
+            DrawLine(
+                new Vector2(x, y + 10),
+                new Vector2(x + 8, y + 28),
+                new Color("#3f765f"),
+                4f);
         }
 
         for (int index = 0; index < 9; index++)
         {
             float x = 70 + index * 137;
             float y = 625 - (index % 3) * 26;
-            DrawArc(new Vector2(x, y), 26f, 0.1f, 2.8f, 16, new Color("#403264", 0.38f), 6f);
+            DrawArc(
+                new Vector2(x, y),
+                26f,
+                0.1f,
+                2.8f,
+                16,
+                new Color("#403264", 0.38f),
+                6f);
         }
     }
 }
