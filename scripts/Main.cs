@@ -41,7 +41,7 @@ public partial class Main : Node2D
         _random.Seed = GameBalance.RandomSeed;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         _level = LevelCatalog.Get(progress.SelectedLevel);
-        _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target.png");
+        _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target_1280.png");
 
         CreatePlayer();
         CreateInterface();

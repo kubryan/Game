@@ -11,7 +11,7 @@ public partial class LevelSelect : Control
     public override void _Ready()
     {
         _progress = GetNode<ProgressManager>("/root/ProgressManager");
-        _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target.png");
+        _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target_1280.png");
         SetAnchorsAndOffsetsPreset(LayoutPreset.FullRect);
         BuildInterface();
         RefreshCards();
