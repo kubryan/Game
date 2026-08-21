@@ -41,6 +41,8 @@ public partial class Main : Node2D
         _random.Seed = GameBalance.RandomSeed;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         _level = LevelCatalog.Get(progress.SelectedLevel);
+        _coreHealth = _level.StartingCoreHealth;
+        _essence = _level.StartingEssence;
         _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target_1280.png");
 
         CreatePlayer();
@@ -273,7 +275,10 @@ public partial class Main : Node2D
         _enemiesPerWave = GameBalance.BaseEnemiesPerWave + _wave * GameBalance.AdditionalEnemiesPerWave;
         _spawnTimer = GameBalance.InitialSpawnDelay;
         _waveInProgress = true;
-        ShowMessage($"第 {_wave} 波妖怪出現了。", 2.5);
+        string waveMessage = _level.EliteWave == _wave
+            ? $"第 {_wave} 波妖怪出現了，精英妖怪正在逼近。"
+            : $"第 {_wave} 波妖怪出現了。";
+        ShowMessage(waveMessage, 2.5);
     }
 
     private void SpawnEnemy()
@@ -281,8 +286,8 @@ public partial class Main : Node2D
         Enemy enemy = new();
         AddChild(enemy);
 
-        int lane = _random.RandiRange(0, GameBalance.SpawnPoints.Length - 1);
-        Vector2 spawnPosition = GameBalance.SpawnPoints[lane];
+        int lane = _random.RandiRange(0, _level.SpawnPoints.Count - 1);
+        Vector2 spawnPosition = _level.SpawnPoints[lane];
         float health = GameBalance.BaseEnemyHealth
             + _wave * GameBalance.EnemyHealthPerWave
             + _level.EnemyHealthBonus;
@@ -290,6 +295,8 @@ public partial class Main : Node2D
             + _wave * GameBalance.EnemySpeedPerWave
             + _level.EnemySpeedBonus;
         float damageToCore = GameBalance.BaseEnemyDamageToCore + _level.CoreDamageBonus;
+        bool isElite = _level.EliteWave == _wave
+            && _spawnedThisWave == _enemiesPerWave / 2;
 
         Color[] enemyColors =
         {
@@ -299,14 +306,23 @@ public partial class Main : Node2D
             new Color("#567e67"),
         };
 
+        Color enemyColor = enemyColors[_random.RandiRange(0, enemyColors.Length - 1)];
+        if (isElite)
+            enemyColor = new Color("#b85d81");
+
         enemy.GlobalPosition = spawnPosition;
         enemy.Configure(
             _corePosition,
             health,
             speed,
-            enemyColors[_random.RandiRange(0, enemyColors.Length - 1)],
-            "縫合妖怪",
-            damageToCore);
+            enemyColor,
+            isElite ? "腐化精英" : "縫合妖怪",
+            damageToCore,
+            isElite,
+            isElite ? _level.EliteHealthMultiplier : 1f,
+            isElite ? _level.EliteSpeedMultiplier : 1f,
+            isElite ? _level.EliteDamageToCoreBonus : 0f,
+            isElite ? _level.EliteEssenceReward : GameBalance.EssencePerEnemy);
         enemy.Defeated += OnEnemyDefeated;
         enemy.DamageTaken += OnEnemyDamageTaken;
     }
@@ -336,10 +352,10 @@ public partial class Main : Node2D
             return;
         }
 
-        _essence += GameBalance.EssencePerEnemy;
+        _essence += enemy.EssenceReward;
         SpawnFloatingText(
             enemy.GlobalPosition,
-            $"+{GameBalance.EssencePerEnemy} 星砂",
+            $"+{enemy.EssenceReward} 星砂",
             GameBalance.EssenceTextColor,
             new Vector2(0, 12));
     }

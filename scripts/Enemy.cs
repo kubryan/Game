@@ -12,6 +12,8 @@ public partial class Enemy : Node2D
     public float MaxHealth { get; private set; } = 42f;
     public float Speed { get; set; } = 38f;
     public float DamageToCore { get; private set; } = GameBalance.BaseEnemyDamageToCore;
+    public int EssenceReward { get; private set; } = GameBalance.EssencePerEnemy;
+    public bool IsElite { get; private set; }
     public Color BodyColor { get; set; } = new("#6b3f86");
     public string DisplayName { get; set; } = "紙眼童";
 
@@ -27,13 +29,20 @@ public partial class Enemy : Node2D
         float speed,
         Color bodyColor,
         string displayName,
-        float damageToCore = GameBalance.BaseEnemyDamageToCore)
+        float damageToCore = GameBalance.BaseEnemyDamageToCore,
+        bool isElite = false,
+        float healthMultiplier = 1f,
+        float speedMultiplier = 1f,
+        float damageToCoreBonus = 0f,
+        int essenceReward = GameBalance.EssencePerEnemy)
     {
         _targetPosition = targetPosition;
-        MaxHealth = health;
-        Health = health;
-        Speed = speed;
-        DamageToCore = damageToCore;
+        MaxHealth = health * Mathf.Max(0.1f, healthMultiplier);
+        Health = MaxHealth;
+        Speed = speed * Mathf.Max(0.1f, speedMultiplier);
+        DamageToCore = damageToCore + damageToCoreBonus;
+        EssenceReward = essenceReward;
+        IsElite = isElite;
         BodyColor = bodyColor;
         DisplayName = displayName;
         AddToGroup("enemies");
@@ -108,20 +117,24 @@ public partial class Enemy : Node2D
     public override void _Draw()
     {
         float pulse = 1f + Mathf.Sin((float)Time.GetTicksMsec() * 0.004f) * 0.04f;
-        DrawCircle(Vector2.Zero, 18f * pulse, BodyColor);
+        float bodyRadius = IsElite ? 25f : 18f;
+        DrawCircle(Vector2.Zero, bodyRadius * pulse, BodyColor);
         DrawCircle(new Vector2(-6, -3), 3f, Colors.White);
         DrawCircle(new Vector2(6, -3), 3f, Colors.White);
         DrawCircle(new Vector2(-6, -3), 1.5f, new Color("#281b3d"));
         DrawCircle(new Vector2(6, -3), 1.5f, new Color("#281b3d"));
-        DrawArc(Vector2.Zero, 12f, 0.2f, Mathf.Pi - 0.2f, 14, new Color("#2b1b3a"), 2f);
+        DrawArc(Vector2.Zero, IsElite ? 17f : 12f, 0.2f, Mathf.Pi - 0.2f, 14, new Color("#2b1b3a"), 2f);
 
-        if (IsFrozen)
+        if (IsElite)
+            DrawArc(Vector2.Zero, 31f, 0, Mathf.Tau, 24, new Color("#ffd36e"), 4f);
+        else if (IsFrozen)
             DrawArc(Vector2.Zero, 25f, 0, Mathf.Tau, 24, new Color("#e4fbff"), 4f);
         else if (_slowTimeRemaining > 0)
             DrawArc(Vector2.Zero, 23f, 0, Mathf.Tau, 24, new Color("#aeeaff"), 3f);
 
         float healthRatio = MaxHealth <= 0 ? 0 : Health / MaxHealth;
-        DrawRect(new Rect2(-20, -31, 40, 4), new Color("#2b1b3a"));
-        DrawRect(new Rect2(-20, -31, 40 * healthRatio, 4), new Color("#ff91a8"));
+        float healthBarWidth = IsElite ? 54f : 40f;
+        DrawRect(new Rect2(-healthBarWidth / 2f, -31, healthBarWidth, 4), new Color("#2b1b3a"));
+        DrawRect(new Rect2(-healthBarWidth / 2f, -31, healthBarWidth * healthRatio, 4), new Color("#ff91a8"));
     }
 }
