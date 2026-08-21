@@ -4,7 +4,8 @@ config_version=5
 
 [application]
 config/name="腐化童話：夜守者"
-run/main_scene="res://scenes/Main.tscn"
+run/main_scene="res://scenes/LevelSelect.tscn"
+
 config/features=PackedStringArray("4.7", "C#")
 
 [display]
@@ -55,6 +56,7 @@ spell_4={
 
 [autoload]
 InputSettings="*res://scripts/InputSettings.cs"
+ProgressManager="*res://scripts/ProgressManager.cs"
 
 [dotnet]
 project/assembly_name="FairyCorruptionTD"

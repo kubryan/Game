@@ -3,7 +3,9 @@ using System;
 
 public partial class Main : Node2D
 {
-    private Player _player = null!;
+        private Player _player = null!;
+    private LevelDefinition _level = null!;
+
     private KeybindMenu _keybindMenu = null!;
     private Label _statusLabel = null!;
     private Label _waveLabel = null!;
@@ -26,10 +28,13 @@ public partial class Main : Node2D
     private bool _finished;
     private int _essence = 180;
 
-    public override void _Ready()
+        public override void _Ready()
     {
         _random.Seed = 87321;
+        ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
+        _level = LevelCatalog.Get(progress.SelectedLevel);
         _backgroundTexture = GD.Load<Texture2D>("res://assets/frosting_forest_visual_target.png");
+
         CreatePlayer();
         CreateInterface();
         StartNextWave();
@@ -65,7 +70,8 @@ public partial class Main : Node2D
                 ShowMessage($"第 {_wave} 波守住了。下一波妖氣將在 3 秒後湧來。", 3.2);
             }
         }
-        else if (_wave < 6)
+                else if (_wave < _level.Waves)
+
         {
             _nextWaveTimer -= delta;
             if (_nextWaveTimer <= 0)
@@ -89,14 +95,22 @@ public partial class Main : Node2D
                 return;
             }
 
-            if (keyEvent.Keycode == Key.F2)
+                        if (keyEvent.Keycode == Key.F2)
             {
                 GetTree().ReloadCurrentScene();
                 GetViewport().SetInputAsHandled();
                 return;
             }
 
+            if (keyEvent.Keycode == Key.F3)
+            {
+                GetTree().ChangeSceneToFile("res://scenes/LevelSelect.tscn");
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
             if (keyEvent.Keycode == Key.Escape && _keybindMenu.Visible)
+
             {
                 _keybindMenu.Visible = false;
                 GetViewport().SetInputAsHandled();
@@ -140,7 +154,8 @@ public partial class Main : Node2D
         };
         canvas.AddChild(topBar);
 
-        _statusLabel = MakeLabel("糖霜森林 · 腐化初醒", new Vector2(28, 14), 22, new Color("#fff1b8"));
+                _statusLabel = MakeLabel($"{_level.Title} · {_level.Subtitle}", new Vector2(28, 14), 22, new Color("#fff1b8"));
+
         canvas.AddChild(_statusLabel);
         _waveLabel = MakeLabel("", new Vector2(28, 49), 15, new Color("#d7c6e9"));
         canvas.AddChild(_waveLabel);
@@ -149,11 +164,20 @@ public partial class Main : Node2D
         _coreLabel = MakeLabel("", new Vector2(450, 50), 15, new Color("#ffb6c8"));
         canvas.AddChild(_coreLabel);
 
+                Button mapButton = new()
+        {
+            Text = "關卡地圖  F3",
+            Position = new Vector2(880, 22),
+            Size = new Vector2(170, 42),
+        };
+        mapButton.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/LevelSelect.tscn");
+        canvas.AddChild(mapButton);
+
         Button settingsButton = new()
         {
             Text = "鍵位設定  F1",
-            Position = new Vector2(1080, 22),
-            Size = new Vector2(170, 42),
+            Position = new Vector2(1060, 22),
+            Size = new Vector2(190, 42),
         };
         settingsButton.Pressed += () => _keybindMenu.Toggle();
         canvas.AddChild(settingsButton);
@@ -189,7 +213,8 @@ public partial class Main : Node2D
 
     private void StartNextWave()
     {
-        if (_wave >= 6)
+                if (_wave >= _level.Waves)
+
         {
             CompleteLevel();
             return;
@@ -197,7 +222,8 @@ public partial class Main : Node2D
 
         _wave++;
         _spawnedThisWave = 0;
-        _enemiesPerWave = 5 + _wave * 2;
+                _enemiesPerWave = 5 + _wave * 2;
+
         _spawnTimer = 0.6;
         _waveInProgress = true;
         ShowMessage($"第 {_wave} 波妖怪出現了。", 2.5);
@@ -216,8 +242,9 @@ public partial class Main : Node2D
             _ => new Vector2(1120, 575),
         };
 
-        float health = 28f + _wave * 8f;
-        float speed = 35f + _wave * 2.5f;
+                float health = 28f + _wave * 8f + _level.EnemyHealthBonus;
+        float speed = 35f + _wave * 2.5f + _level.EnemySpeedBonus;
+
         Color color = new[]
         {
             new Color("#7b4f96"),
@@ -286,7 +313,8 @@ public partial class Main : Node2D
     {
         if (_waveLabel == null)
             return;
-        _waveLabel.Text = _waveInProgress ? $"波次 {_wave} / 6    星砂 {_essence}    左鍵：建造塔" : $"波次 {_wave} / 6    星砂 {_essence}    整備中";
+                _waveLabel.Text = _waveInProgress ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    左鍵：建造塔" : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    整備中";
+
         _coreLabel.Text = $"希望篝火  {Mathf.Max(0, Mathf.RoundToInt(_coreHealth))}%";
     }
 
@@ -315,13 +343,15 @@ public partial class Main : Node2D
     private void CompleteLevel()
     {
         _finished = true;
-        _messageLabel.Text = "關卡完成！糖霜森林暫時守住了。按 F2 重新挑戰。";
+        ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
+        progress.CompleteLevel(_level.Id);
+        _messageLabel.Text = $"{_level.Title} 完成！下一個區域已解鎖。按 F2 重玩，按 F3 返回關卡地圖。";
     }
 
     private void FailLevel()
     {
         _finished = true;
-        _messageLabel.Text = "希望篝火熄滅了。按 F2 重新挑戰這個關卡。";
+        _messageLabel.Text = "希望篝火熄滅了。按 F2 重新挑戰，按 F3 返回關卡地圖。";
     }
 
     public override void _Draw()
