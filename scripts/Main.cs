@@ -39,8 +39,10 @@ public partial class Main : Node2D
     private double _nextWaveTimer = GameBalance.InitialWaveDelay;
     private double _messageTimer;
     private double _tutorialTimer;
+    private double _elapsedSeconds;
     private int _defeatedEnemies;
     private int _builtTowers;
+    private bool _isNewBestScore;
     private bool _waveInProgress;
     private bool _finished;
 
@@ -65,6 +67,7 @@ public partial class Main : Node2D
         if (_finished)
             return;
 
+        _elapsedSeconds += delta;
         UpdateMessageTimer(delta);
         UpdateTutorialTimer(delta);
         ProcessWave(delta);
@@ -631,13 +634,30 @@ public partial class Main : Node2D
             ? new string('★', stars) + new string('☆', 3 - stars)
             : "☆☆☆";
         string resultLine = completed ? "篝火仍在燃燒，這片童話暫時安全了。" : "希望篝火熄滅了，下一次請更早布置防線。";
-        return $"{resultLine}\n\n"
+        string currentStats = $"本次成績\n"
             + $"評價   {rating}\n"
             + $"篝火   {Mathf.Max(0, Mathf.RoundToInt(_coreHealth))} / {Mathf.RoundToInt(_level.StartingCoreHealth)}\n"
+            + $"通關時間   {FormatTime(_elapsedSeconds)}\n"
             + $"擊退妖怪   {_defeatedEnemies}\n"
             + $"建造魔法塔   {_builtTowers}\n"
-            + $"剩餘星砂   {_essence}\n\n"
+            + $"剩餘星砂   {_essence}";
+
+        ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
+        string bestStats = progress.HasBestScore(_level.Id)
+            ? "本關最佳\n"
+                + $"評價   {new string('★', progress.GetBestStars(_level.Id))}{new string('☆', 3 - progress.GetBestStars(_level.Id))}\n"
+                + $"篝火   {Mathf.RoundToInt(progress.GetBestCoreHealthRatio(_level.Id) * 100f)}%\n"
+                + $"通關時間   {FormatTime(progress.GetBestTimeSeconds(_level.Id))}"
+            : "本關最佳\n尚無通關紀錄";
+        string recordMessage = _isNewBestScore ? "\n\n新紀錄！本關最佳成績已更新。" : string.Empty;
+        return $"{resultLine}\n\n{currentStats}\n\n{bestStats}{recordMessage}\n\n"
             + "F2 重新挑戰　　F3 返回關卡地圖";
+    }
+
+    private string FormatTime(double seconds)
+    {
+        int totalSeconds = Mathf.Max(0, Mathf.RoundToInt((float)seconds));
+        return $"{totalSeconds / 60:00}:{totalSeconds % 60:00}";
     }
 
     private void ShowMessage(string message, double duration, Color? color = null)
@@ -665,10 +685,15 @@ public partial class Main : Node2D
     private void CompleteLevel()
     {
         StopAllTowers();
-        _finished = true;
         HideTutorial();
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
+        _isNewBestScore = progress.RecordBestScore(
+            _level.Id,
+            CalculateStars(),
+            _level.StartingCoreHealth <= 0 ? 0f : _coreHealth / _level.StartingCoreHealth,
+            _elapsedSeconds);
         progress.CompleteLevel(_level.Id);
+        _finished = true;
         _messageLabel.Text = $"{_level.Title} 完成！";
         ShowResultPanel($"{_level.Title} · 通關", BuildResultStats(true));
     }
