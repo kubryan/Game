@@ -16,6 +16,7 @@ public partial class Tower : Node2D
     public double Cooldown { get; set; } = 1.25;
 
     private double _timer;
+    private bool _combatActive = true;
     private Color _color = new("#ff9d70");
 
     public void Configure(TowerType type)
@@ -53,9 +54,18 @@ public partial class Tower : Node2D
         QueueRedraw();
     }
 
+        public void StopAttacking()
+    {
+        _combatActive = false;
+    }
+
     public override void _Process(double delta)
     {
+        if (!_combatActive)
+            return;
+
         _timer -= delta;
+
         if (_timer <= 0)
         {
             Enemy? target = FindNearestEnemy();

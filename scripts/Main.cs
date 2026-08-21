@@ -347,6 +347,7 @@ public partial class Main : Node2D
 
     private void CompleteLevel()
     {
+        StopAllTowers();
         _finished = true;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         progress.CompleteLevel(_level.Id);
@@ -355,11 +356,22 @@ public partial class Main : Node2D
 
     private void FailLevel()
     {
+        StopAllTowers();
         _finished = true;
         _messageLabel.Text = "希望篝火熄滅了。按 F2 重新挑戰，按 F3 返回關卡地圖。";
     }
 
+        private void StopAllTowers()
+    {
+        foreach (Node node in GetTree().GetNodesInGroup("towers"))
+        {
+            if (node is Tower tower && IsInstanceValid(tower))
+                tower.StopAttacking();
+        }
+    }
+
     public override void _Draw()
+
     {
         if (_backgroundTexture != null)
         {
