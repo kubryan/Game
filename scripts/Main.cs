@@ -113,7 +113,10 @@ public partial class Main : Node2D
 
         _messageTimer -= delta;
         if (_messageTimer <= 0)
+        {
             _messageLabel.Text = "守住希望篝火，別讓夜色吞掉森林。";
+            _messageLabel.AddThemeColorOverride("font_color", GameBalance.MessageTextColor);
+        }
     }
 
     private void ProcessWave(double delta)
@@ -193,7 +196,7 @@ public partial class Main : Node2D
             new Color("#fff1b8"));
         canvas.AddChild(_statusLabel);
 
-        _waveLabel = MakeLabel("", new Vector2(28, 49), 15, new Color("#d7c6e9"));
+        _waveLabel = MakeLabel("", new Vector2(28, 49), 15, GameBalance.HudTextColor);
         canvas.AddChild(_waveLabel);
 
         _manaLabel = MakeLabel("", new Vector2(450, 20), 17, new Color("#aeeaff"));
@@ -224,7 +227,7 @@ public partial class Main : Node2D
             "守住希望篝火，別讓夜色吞掉森林。",
             new Vector2(28, GameBalance.FooterY),
             16,
-            new Color("#ffe7b0"));
+            GameBalance.MessageTextColor);
         canvas.AddChild(_messageLabel);
 
         _spellLabels = new Label[GameBalance.SpellCount];
@@ -305,6 +308,16 @@ public partial class Main : Node2D
             "縫合妖怪",
             damageToCore);
         enemy.Defeated += OnEnemyDefeated;
+        enemy.DamageTaken += OnEnemyDamageTaken;
+    }
+
+    private void OnEnemyDamageTaken(Enemy enemy, float amount)
+    {
+        SpawnFloatingText(
+            enemy.GlobalPosition,
+            $"-{amount:0.#}",
+            GameBalance.DamageTextColor,
+            new Vector2(0, -10));
     }
 
     private void OnEnemyDefeated(Enemy enemy)
@@ -312,20 +325,33 @@ public partial class Main : Node2D
         if (enemy.HasReachedCore)
         {
             _coreHealth -= enemy.DamageToCore;
-            ShowMessage("妖怪碰到了希望篝火！", 2.2);
+            SpawnFloatingText(
+                enemy.GlobalPosition,
+                $"-{enemy.DamageToCore:0.#} 篝火",
+                GameBalance.WarningColor,
+                new Vector2(0, -10));
+            ShowMessage("妖怪碰到了希望篝火！", 2.2, GameBalance.WarningColor);
             if (_coreHealth <= 0)
                 FailLevel();
             return;
         }
 
         _essence += GameBalance.EssencePerEnemy;
+        SpawnFloatingText(
+            enemy.GlobalPosition,
+            $"+{GameBalance.EssencePerEnemy} 星砂",
+            GameBalance.EssenceTextColor,
+            new Vector2(0, 12));
     }
 
     private void TryBuildTower(Vector2 position)
     {
         if (_essence < GameBalance.TowerBuildCost)
         {
-            ShowMessage("星砂不足，還需要更多妖怪掉落的光屑。", 2.2);
+            ShowMessage(
+                $"星砂不足：建塔需要 {GameBalance.TowerBuildCost}，目前只有 {_essence}。",
+                GameBalance.WarningMessageDuration,
+                GameBalance.WarningColor);
             return;
         }
 
@@ -369,9 +395,16 @@ public partial class Main : Node2D
             return;
 
         string phase = _waveInProgress ? "" : "整備中";
+        bool canAffordTower = _essence >= GameBalance.TowerBuildCost;
+        string buildHint = canAffordTower
+            ? $"左鍵：建造塔（{GameBalance.TowerBuildCost} 星砂）"
+            : $"左鍵：建造塔（需要 {GameBalance.TowerBuildCost} 星砂）";
         _waveLabel.Text = _waveInProgress
-            ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    左鍵：建造塔"
-            : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {phase}";
+            ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {buildHint}"
+            : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {phase}    {buildHint}";
+        _waveLabel.AddThemeColorOverride(
+            "font_color",
+            canAffordTower ? GameBalance.HudTextColor : GameBalance.WarningColor);
         _coreLabel.Text = $"希望篝火  {Mathf.Max(0, Mathf.RoundToInt(_coreHealth))}%";
     }
 
@@ -390,13 +423,26 @@ public partial class Main : Node2D
         }
     }
 
-    private void ShowMessage(string message, double duration)
+    private void ShowMessage(string message, double duration, Color? color = null)
     {
         if (_messageLabel == null)
             return;
 
         _messageLabel.Text = message;
+        _messageLabel.AddThemeColorOverride("font_color", color ?? GameBalance.MessageTextColor);
         _messageTimer = duration;
+    }
+
+    private void SpawnFloatingText(Vector2 position, string text, Color color, Vector2 offset = default)
+    {
+        FloatingText floatingText = new()
+        {
+            Text = text,
+            TextColor = color,
+            TextOffset = offset,
+        };
+        GetTree().CurrentScene.AddChild(floatingText);
+        floatingText.GlobalPosition = position;
     }
 
     private void CompleteLevel()

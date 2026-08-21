@@ -5,11 +5,13 @@ public partial class Enemy : Node2D
     [Signal]
     public delegate void DefeatedEventHandler(Enemy enemy);
 
+    [Signal]
+    public delegate void DamageTakenEventHandler(Enemy enemy, float amount);
+
     public float Health { get; private set; } = 42f;
     public float MaxHealth { get; private set; } = 42f;
     public float Speed { get; set; } = 38f;
-        public float DamageToCore { get; private set; } = GameBalance.BaseEnemyDamageToCore;
-
+    public float DamageToCore { get; private set; } = GameBalance.BaseEnemyDamageToCore;
     public Color BodyColor { get; set; } = new("#6b3f86");
     public string DisplayName { get; set; } = "紙眼童";
 
@@ -18,23 +20,21 @@ public partial class Enemy : Node2D
     private float _slowMultiplier = 1f;
     private bool _reachedCore;
 
-        public void Configure(
+    public void Configure(
         Vector2 targetPosition,
         float health,
         float speed,
         Color bodyColor,
         string displayName,
         float damageToCore = GameBalance.BaseEnemyDamageToCore)
-
     {
         _targetPosition = targetPosition;
         MaxHealth = health;
         Health = health;
-                Speed = speed;
+        Speed = speed;
         DamageToCore = damageToCore;
         BodyColor = bodyColor;
         DisplayName = displayName;
-
         AddToGroup("enemies");
         QueueRedraw();
     }
@@ -65,15 +65,19 @@ public partial class Enemy : Node2D
 
     public void TakeDamage(float amount)
     {
-        if (_reachedCore || !IsInsideTree())
+        if (_reachedCore || !IsInsideTree() || amount <= 0)
             return;
 
+        float actualDamage = Mathf.Min(amount, Health);
         Health = Mathf.Max(0f, Health - amount);
+        EmitSignal(SignalName.DamageTaken, this, actualDamage);
+
         if (Health <= 0f)
         {
             EmitSignal(SignalName.Defeated, this);
             QueueFree();
         }
+
         QueueRedraw();
     }
 

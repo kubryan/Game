@@ -8,6 +8,10 @@ public static class GameBalance
     public const int ViewportHeight = 720;
     public const int HeaderHeight = 86;
     public const int FooterY = 665;
+    public const int FloatingTextFontSize = 18;
+    public const float FloatingTextRiseSpeed = 36f;
+    public const double FloatingTextDuration = 0.78;
+    public const double WarningMessageDuration = 2.2;
     public const int SpellCount = 4;
     public const int TowerTypeCount = 4;
 
@@ -61,6 +65,11 @@ public static class GameBalance
     public const float FrostSlowDuration = 1.2f;
     public const float NatureSlowMultiplier = 0.82f;
     public const float NatureSlowDuration = 1.5f;
+    public static readonly Color HudTextColor = new("#d7c6e9");
+    public static readonly Color MessageTextColor = new("#ffe7b0");
+    public static readonly Color DamageTextColor = new("#fff1b8");
+    public static readonly Color EssenceTextColor = new("#b8ffcf");
+    public static readonly Color WarningColor = new("#ff6b8a");
     public const double InitialWaveDelay = 1.5;
     public const double InterWaveDelay = 3.2;
 
