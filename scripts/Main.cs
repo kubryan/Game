@@ -66,12 +66,17 @@ public partial class Main : Node2D
             if (_spawnedThisWave >= _enemiesPerWave && GetTree().GetNodesInGroup("enemies").Count == 0)
             {
                 _waveInProgress = false;
+                if (_wave >= _level.Waves)
+                {
+                    CompleteLevel();
+                    return;
+                }
+
                 _nextWaveTimer = 3.2;
                 ShowMessage($"第 {_wave} 波守住了。下一波妖氣將在 3 秒後湧來。", 3.2);
             }
         }
-                else if (_wave < _level.Waves)
-
+        else if (_wave < _level.Waves)
         {
             _nextWaveTimer -= delta;
             if (_nextWaveTimer <= 0)
