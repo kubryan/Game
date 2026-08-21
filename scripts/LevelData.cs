@@ -24,6 +24,14 @@ public static class GameBalance
     public const float PlayerAutoAttackDamage = 12f;
     public const double PlayerAutoAttackCooldown = 0.62;
     public const float PlayerManaRegenPerSecond = 7f;
+    public const int EnemyExperience = 18;
+    public const int EliteEnemyExperience = 45;
+    public const int BaseExperienceToLevelUp = 60;
+    public const int ExperienceIncreasePerLevel = 35;
+    public const float NightWatcherAttackUpgrade = 4f;
+    public const float NightWatcherMoveSpeedUpgrade = 18f;
+    public const float NightWatcherMaxManaUpgrade = 15f;
+    public const float NightWatcherManaRegenUpgrade = 1.5f;
 
     public const float EmberMissileRange = 420f;
     public const float EmberMissileDamage = 34f;
@@ -75,9 +83,15 @@ public static class GameBalance
     public static readonly Color MessageTextColor = new("#ffe7b0");
     public static readonly Color DamageTextColor = new("#fff1b8");
     public static readonly Color EssenceTextColor = new("#b8ffcf");
+    public static readonly Color ExperienceTextColor = new("#d9b4ff");
     public static readonly Color WarningColor = new("#ff6b8a");
     public const double InitialWaveDelay = 1.5;
     public const double InterWaveDelay = 3.2;
+
+    public static int ExperienceToNextLevel(int level)
+    {
+        return BaseExperienceToLevelUp + Mathf.Max(0, level - 1) * ExperienceIncreasePerLevel;
+    }
 
     public static readonly Vector2[] SpawnPoints =
     {

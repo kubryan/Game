@@ -28,6 +28,9 @@ public partial class Main : Node2D
     private PanelContainer _resultPanel = null!;
     private Label _resultTitleLabel = null!;
     private Label _resultStatsLabel = null!;
+    private PanelContainer _levelUpPanel = null!;
+    private Label _levelUpTitleLabel = null!;
+    private Label _levelUpInfoLabel = null!;
     private Texture2D? _backgroundTexture;
 
     private float _coreHealth = GameBalance.StartingCoreHealth;
@@ -40,6 +43,10 @@ public partial class Main : Node2D
     private double _messageTimer;
     private double _tutorialTimer;
     private double _elapsedSeconds;
+    private int _nightWatcherLevel = 1;
+    private int _experience;
+    private int _experienceToNextLevel = GameBalance.ExperienceToNextLevel(1);
+    private bool _awaitingLevelUpChoice;
     private int _defeatedEnemies;
     private int _builtTowers;
     private bool _isNewBestScore;
@@ -48,6 +55,7 @@ public partial class Main : Node2D
 
     public override void _Ready()
     {
+        ProcessMode = Node.ProcessModeEnum.Always;
         _random.Seed = GameBalance.RandomSeed;
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         _level = LevelCatalog.Get(progress.SelectedLevel);
@@ -66,6 +74,12 @@ public partial class Main : Node2D
     {
         if (_finished)
             return;
+
+        if (_awaitingLevelUpChoice)
+        {
+            UpdateStatusLabels();
+            return;
+        }
 
         _elapsedSeconds += delta;
         UpdateMessageTimer(delta);
@@ -113,6 +127,12 @@ public partial class Main : Node2D
             if (keyEvent.Keycode == Key.Escape && _tutorialPanel.Visible)
             {
                 HideTutorial();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
+
+            if (_awaitingLevelUpChoice)
+            {
                 GetViewport().SetInputAsHandled();
                 return;
             }
@@ -296,6 +316,86 @@ public partial class Main : Node2D
         canvas.AddChild(_keybindMenu);
         CreateTutorialPanel(canvas);
         CreateResultPanel(canvas);
+        CreateLevelUpPanel(canvas);
+    }
+
+    private void CreateLevelUpPanel(CanvasLayer canvas)
+    {
+        _levelUpPanel = new PanelContainer
+        {
+            Position = new Vector2(275, 145),
+            Size = new Vector2(730, 390),
+            Visible = false,
+            ProcessMode = Node.ProcessModeEnum.WhenPaused,
+        };
+        _levelUpPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateOverlayStyle(GameBalance.ExperienceTextColor));
+
+        MarginContainer margin = new();
+        margin.AddThemeConstantOverride("margin_left", 32);
+        margin.AddThemeConstantOverride("margin_top", 24);
+        margin.AddThemeConstantOverride("margin_right", 32);
+        margin.AddThemeConstantOverride("margin_bottom", 24);
+        _levelUpPanel.AddChild(margin);
+
+        VBoxContainer content = new();
+        content.AddThemeConstantOverride("separation", 14);
+        margin.AddChild(content);
+
+        _levelUpTitleLabel = new Label
+        {
+            Text = "夜守者等級提升！",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        _levelUpTitleLabel.AddThemeFontSizeOverride("font_size", 28);
+        _levelUpTitleLabel.AddThemeColorOverride("font_color", new Color("#fff1b8"));
+        content.AddChild(_levelUpTitleLabel);
+
+        _levelUpInfoLabel = new Label
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        _levelUpInfoLabel.AddThemeFontSizeOverride("font_size", 17);
+        _levelUpInfoLabel.AddThemeColorOverride("font_color", GameBalance.ExperienceTextColor);
+        content.AddChild(_levelUpInfoLabel);
+
+        HBoxContainer choices = new();
+        choices.Alignment = BoxContainer.AlignmentMode.Center;
+        choices.AddThemeConstantOverride("separation", 12);
+        content.AddChild(choices);
+        choices.AddChild(CreateUpgradeButton(
+            "星火淬鍊\n自動攻擊傷害 +4",
+            0));
+        choices.AddChild(CreateUpgradeButton(
+            "月影步\n移動速度 +18",
+            1));
+        choices.AddChild(CreateUpgradeButton(
+            "月泉之心\n最大法力 +15\n回復速度 +1.5",
+            2));
+
+        Label hint = new()
+        {
+            Text = "選擇一項強化後，時間會繼續流動。",
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        hint.AddThemeFontSizeOverride("font_size", 15);
+        hint.AddThemeColorOverride("font_color", GameBalance.HudTextColor);
+        content.AddChild(hint);
+        canvas.AddChild(_levelUpPanel);
+    }
+
+    private Button CreateUpgradeButton(string text, int choice)
+    {
+        Button button = new()
+        {
+            Text = text,
+            CustomMinimumSize = new Vector2(205, 105),
+            ProcessMode = Node.ProcessModeEnum.WhenPaused,
+        };
+        button.AddThemeFontSizeOverride("font_size", 17);
+        button.Pressed += () => ChooseUpgrade(choice);
+        return button;
     }
 
     private void CreateTutorialPanel(CanvasLayer canvas)
@@ -521,11 +621,20 @@ public partial class Main : Node2D
 
         _defeatedEnemies++;
         _essence += enemy.EssenceReward;
+        int experienceReward = enemy.IsElite
+            ? GameBalance.EliteEnemyExperience
+            : GameBalance.EnemyExperience;
         SpawnFloatingText(
             enemy.GlobalPosition,
             $"+{enemy.EssenceReward} 星砂",
             GameBalance.EssenceTextColor,
             new Vector2(0, 12));
+        SpawnFloatingText(
+            enemy.GlobalPosition,
+            $"+{experienceReward} XP",
+            GameBalance.ExperienceTextColor,
+            new Vector2(0, 30));
+        GrantExperience(experienceReward);
     }
 
     private void TryBuildTower(Vector2 position)
@@ -559,6 +668,54 @@ public partial class Main : Node2D
         ShowMessage("魔法塔已建立。繼續守住這片還沒腐爛的森林。", 2.2);
     }
 
+    private void GrantExperience(int amount)
+    {
+        _experience += amount;
+        if (_experience < _experienceToNextLevel)
+            return;
+
+        _experience -= _experienceToNextLevel;
+        _nightWatcherLevel++;
+        _experienceToNextLevel = GameBalance.ExperienceToNextLevel(_nightWatcherLevel);
+        ShowLevelUpPanel();
+    }
+
+    private void ShowLevelUpPanel()
+    {
+        _awaitingLevelUpChoice = true;
+        _levelUpInfoLabel.Text =
+            $"夜守者 Lv.{_nightWatcherLevel}　選擇一項力量。\n"
+            + $"下一級經驗：{_experience} / {_experienceToNextLevel}";
+        _levelUpPanel.Visible = true;
+        GetTree().Paused = true;
+    }
+
+    private void ChooseUpgrade(int choice)
+    {
+        switch (choice)
+        {
+            case 0:
+                _player.ApplyAttackUpgrade();
+                ShowMessage("星火淬鍊完成：自動攻擊傷害提升。", 2.2);
+                break;
+            case 1:
+                _player.ApplyMobilityUpgrade();
+                ShowMessage("月影步完成：移動速度提升。", 2.2);
+                break;
+            case 2:
+                _player.ApplyManaUpgrade();
+                ShowMessage("月泉之心完成：法力上限與回復速度提升。", 2.2);
+                break;
+            default:
+                return;
+        }
+
+        _levelUpPanel.Visible = false;
+        _awaitingLevelUpChoice = false;
+        GetTree().Paused = false;
+        UpdateStatusLabels();
+    }
+
     private void OnManaChanged(float current, float maximum)
     {
         _manaLabel.Text = $"法力  {Mathf.RoundToInt(current)} / {Mathf.RoundToInt(maximum)}";
@@ -584,9 +741,10 @@ public partial class Main : Node2D
         string buildHint = canAffordTower
             ? $"左鍵：建造塔（{GameBalance.TowerBuildCost} 星砂）"
             : $"左鍵：建造塔（需要 {GameBalance.TowerBuildCost} 星砂）";
+        string levelProgress = $"夜守者 Lv.{_nightWatcherLevel}  XP {_experience}/{_experienceToNextLevel}";
         _waveLabel.Text = _waveInProgress
-            ? $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {buildHint}"
-            : $"波次 {_wave} / {_level.Waves}    星砂 {_essence}    {phase}    {buildHint}";
+            ? $"波次 {_wave} / {_level.Waves}    {levelProgress}    星砂 {_essence}    {buildHint}"
+            : $"波次 {_wave} / {_level.Waves}    {levelProgress}    星砂 {_essence}    {phase}    {buildHint}";
         _waveLabel.AddThemeColorOverride(
             "font_color",
             canAffordTower ? GameBalance.HudTextColor : GameBalance.WarningColor);

@@ -35,6 +35,9 @@ public partial class Player : Node2D
 
     private double _attackTimer;
     private Vector2 _facing = Vector2.Right;
+    private float _attackDamageBonus;
+    private float _moveSpeedBonus;
+    private float _manaRegenBonus;
 
     public override void _Ready()
     {
@@ -64,7 +67,9 @@ public partial class Player : Node2D
         if (movement.LengthSquared() > 0.01f)
         {
             _facing = movement.Normalized();
-            GlobalPosition += movement.Normalized() * GameBalance.PlayerMoveSpeed * (float)delta;
+            GlobalPosition += movement.Normalized()
+                * (GameBalance.PlayerMoveSpeed + _moveSpeedBonus)
+                * (float)delta;
         }
 
         GlobalPosition = new Vector2(
@@ -84,7 +89,9 @@ public partial class Player : Node2D
 
     private void RegenerateMana(double delta)
     {
-        Mana = Mathf.Min(MaxMana, Mana + GameBalance.PlayerManaRegenPerSecond * (float)delta);
+        Mana = Mathf.Min(
+            MaxMana,
+            Mana + (GameBalance.PlayerManaRegenPerSecond + _manaRegenBonus) * (float)delta);
         EmitSignal(SignalName.ManaChanged, Mana, MaxMana);
     }
 
@@ -141,6 +148,24 @@ public partial class Player : Node2D
         }
     }
 
+    public void ApplyAttackUpgrade()
+    {
+        _attackDamageBonus += GameBalance.NightWatcherAttackUpgrade;
+    }
+
+    public void ApplyMobilityUpgrade()
+    {
+        _moveSpeedBonus += GameBalance.NightWatcherMoveSpeedUpgrade;
+    }
+
+    public void ApplyManaUpgrade()
+    {
+        _manaRegenBonus += GameBalance.NightWatcherManaRegenUpgrade;
+        MaxMana += GameBalance.NightWatcherMaxManaUpgrade;
+        Mana = Mathf.Min(MaxMana, Mana + GameBalance.NightWatcherMaxManaUpgrade);
+        EmitSignal(SignalName.ManaChanged, Mana, MaxMana);
+    }
+
     public double GetSpellCooldown(int slot)
     {
         return slot >= 0 && slot < _spellTimers.Length
@@ -154,7 +179,7 @@ public partial class Player : Node2D
         Projectile projectile = new()
         {
             Target = target,
-            Damage = GameBalance.PlayerAutoAttackDamage,
+            Damage = GameBalance.PlayerAutoAttackDamage + _attackDamageBonus,
             ProjectileColor = new Color("#ffe38b"),
             TravelSpeed = 430f,
         };
