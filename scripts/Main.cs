@@ -23,6 +23,11 @@ public partial class Main : Node2D
     private Label _coreLabel = null!;
     private Label _messageLabel = null!;
     private Label[] _spellLabels = Array.Empty<Label>();
+    private PanelContainer _tutorialPanel = null!;
+    private Label _tutorialLabel = null!;
+    private PanelContainer _resultPanel = null!;
+    private Label _resultTitleLabel = null!;
+    private Label _resultStatsLabel = null!;
     private Texture2D? _backgroundTexture;
 
     private float _coreHealth = GameBalance.StartingCoreHealth;
@@ -33,6 +38,9 @@ public partial class Main : Node2D
     private double _spawnTimer;
     private double _nextWaveTimer = GameBalance.InitialWaveDelay;
     private double _messageTimer;
+    private double _tutorialTimer;
+    private int _defeatedEnemies;
+    private int _builtTowers;
     private bool _waveInProgress;
     private bool _finished;
 
@@ -48,6 +56,7 @@ public partial class Main : Node2D
         CreatePlayer();
         CreateInterface();
         StartNextWave();
+        ShowTutorialIfNeeded();
         QueueRedraw();
     }
 
@@ -57,6 +66,7 @@ public partial class Main : Node2D
             return;
 
         UpdateMessageTimer(delta);
+        UpdateTutorialTimer(delta);
         ProcessWave(delta);
 
         if (_player != null)
@@ -96,6 +106,13 @@ public partial class Main : Node2D
                 GetViewport().SetInputAsHandled();
                 return;
             }
+
+            if (keyEvent.Keycode == Key.Escape && _tutorialPanel.Visible)
+            {
+                HideTutorial();
+                GetViewport().SetInputAsHandled();
+                return;
+            }
         }
 
         if (_keybindMenu.Visible || _finished)
@@ -119,6 +136,32 @@ public partial class Main : Node2D
             _messageLabel.Text = "守住希望篝火，別讓夜色吞掉森林。";
             _messageLabel.AddThemeColorOverride("font_color", GameBalance.MessageTextColor);
         }
+    }
+
+    private void ShowTutorialIfNeeded()
+    {
+        if (_level.Id != 1)
+            return;
+
+        _tutorialTimer = GameBalance.TutorialDuration;
+        _tutorialPanel.Visible = true;
+    }
+
+    private void UpdateTutorialTimer(double delta)
+    {
+        if (_tutorialTimer <= 0 || !_tutorialPanel.Visible)
+            return;
+
+        _tutorialTimer -= delta;
+        if (_tutorialTimer <= 0)
+            HideTutorial();
+    }
+
+    private void HideTutorial()
+    {
+        _tutorialTimer = 0;
+        if (_tutorialPanel != null)
+            _tutorialPanel.Visible = false;
     }
 
     private void ProcessWave(double delta)
@@ -248,6 +291,127 @@ public partial class Main : Node2D
 
         _keybindMenu = new KeybindMenu();
         canvas.AddChild(_keybindMenu);
+        CreateTutorialPanel(canvas);
+        CreateResultPanel(canvas);
+    }
+
+    private void CreateTutorialPanel(CanvasLayer canvas)
+    {
+        _tutorialPanel = new PanelContainer
+        {
+            Position = new Vector2(360, 180),
+            Size = new Vector2(560, 220),
+            Visible = false,
+            MouseFilter = Control.MouseFilterEnum.Ignore,
+        };
+        _tutorialPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateOverlayStyle(new Color("#ffd36e")));
+
+        MarginContainer margin = new();
+        margin.AddThemeConstantOverride("margin_left", 28);
+        margin.AddThemeConstantOverride("margin_top", 22);
+        margin.AddThemeConstantOverride("margin_right", 28);
+        margin.AddThemeConstantOverride("margin_bottom", 22);
+        _tutorialPanel.AddChild(margin);
+
+        _tutorialLabel = new Label
+        {
+            Text =
+                "夜守者，歡迎來到糖霜森林。\n\n"
+                + "WASD：移動角色\n"
+                + "角色會自動攻擊附近的妖怪\n"
+                + "左鍵：建造魔法塔\n"
+                + "1～4：施放四種主動法術\n\n"
+                + "提示會在幾秒後自動消失，按 Esc 可立即關閉。",
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        _tutorialLabel.AddThemeFontSizeOverride("font_size", 20);
+        _tutorialLabel.AddThemeColorOverride("font_color", new Color("#fff4bd"));
+        margin.AddChild(_tutorialLabel);
+        canvas.AddChild(_tutorialPanel);
+    }
+
+    private void CreateResultPanel(CanvasLayer canvas)
+    {
+        _resultPanel = new PanelContainer
+        {
+            Position = new Vector2(300, 125),
+            Size = new Vector2(680, 455),
+            Visible = false,
+        };
+        _resultPanel.AddThemeStyleboxOverride(
+            "panel",
+            CreateOverlayStyle(new Color("#a875ff")));
+
+        MarginContainer margin = new();
+        margin.AddThemeConstantOverride("margin_left", 42);
+        margin.AddThemeConstantOverride("margin_top", 32);
+        margin.AddThemeConstantOverride("margin_right", 42);
+        margin.AddThemeConstantOverride("margin_bottom", 28);
+        _resultPanel.AddChild(margin);
+
+        VBoxContainer content = new();
+        content.AddThemeConstantOverride("separation", 16);
+        margin.AddChild(content);
+
+        _resultTitleLabel = new Label
+        {
+            HorizontalAlignment = HorizontalAlignment.Center,
+        };
+        _resultTitleLabel.AddThemeFontSizeOverride("font_size", 30);
+        _resultTitleLabel.AddThemeColorOverride("font_color", new Color("#fff1b8"));
+        content.AddChild(_resultTitleLabel);
+
+        _resultStatsLabel = new Label
+        {
+            CustomMinimumSize = new Vector2(0, 210),
+            HorizontalAlignment = HorizontalAlignment.Center,
+            VerticalAlignment = VerticalAlignment.Center,
+            AutowrapMode = TextServer.AutowrapMode.WordSmart,
+        };
+        _resultStatsLabel.AddThemeFontSizeOverride("font_size", 20);
+        _resultStatsLabel.AddThemeColorOverride("font_color", new Color("#f0e6ff"));
+        content.AddChild(_resultStatsLabel);
+
+        HBoxContainer actions = new();
+        actions.Alignment = BoxContainer.AlignmentMode.Center;
+        actions.AddThemeConstantOverride("separation", 18);
+        content.AddChild(actions);
+
+        Button replayButton = new()
+        {
+            Text = "重新挑戰  F2",
+            CustomMinimumSize = new Vector2(210, 48),
+        };
+        replayButton.Pressed += () => GetTree().ReloadCurrentScene();
+        actions.AddChild(replayButton);
+
+        Button mapButton = new()
+        {
+            Text = "返回關卡地圖  F3",
+            CustomMinimumSize = new Vector2(210, 48),
+        };
+        mapButton.Pressed += () => GetTree().ChangeSceneToFile("res://scenes/LevelSelect.tscn");
+        actions.AddChild(mapButton);
+        canvas.AddChild(_resultPanel);
+    }
+
+    private StyleBoxFlat CreateOverlayStyle(Color borderColor)
+    {
+        StyleBoxFlat style = new()
+        {
+            BgColor = new Color(0.08f, 0.05f, 0.16f, 0.96f),
+            BorderColor = borderColor,
+            CornerRadiusTopLeft = 18,
+            CornerRadiusTopRight = 18,
+            CornerRadiusBottomLeft = 18,
+            CornerRadiusBottomRight = 18,
+        };
+        style.SetBorderWidthAll(3);
+        return style;
     }
 
     private Label MakeLabel(string text, Vector2 position, int fontSize, Color color)
@@ -352,6 +516,7 @@ public partial class Main : Node2D
             return;
         }
 
+        _defeatedEnemies++;
         _essence += enemy.EssenceReward;
         SpawnFloatingText(
             enemy.GlobalPosition,
@@ -387,6 +552,7 @@ public partial class Main : Node2D
         tower.GlobalPosition = position;
         AddChild(tower);
         _essence -= GameBalance.TowerBuildCost;
+        _builtTowers++;
         ShowMessage("魔法塔已建立。繼續守住這片還沒腐爛的森林。", 2.2);
     }
 
@@ -439,6 +605,41 @@ public partial class Main : Node2D
         }
     }
 
+    private void ShowResultPanel(string title, string stats)
+    {
+        _resultTitleLabel.Text = title;
+        _resultStatsLabel.Text = stats;
+        _resultPanel.Visible = true;
+    }
+
+    private int CalculateStars()
+    {
+        float healthRatio = _level.StartingCoreHealth <= 0
+            ? 0
+            : _coreHealth / _level.StartingCoreHealth;
+        if (healthRatio >= GameBalance.ThreeStarCoreHealthRatio)
+            return 3;
+        if (healthRatio >= GameBalance.TwoStarCoreHealthRatio)
+            return 2;
+        return 1;
+    }
+
+    private string BuildResultStats(bool completed)
+    {
+        int stars = completed ? CalculateStars() : 0;
+        string rating = completed
+            ? new string('★', stars) + new string('☆', 3 - stars)
+            : "☆☆☆";
+        string resultLine = completed ? "篝火仍在燃燒，這片童話暫時安全了。" : "希望篝火熄滅了，下一次請更早布置防線。";
+        return $"{resultLine}\n\n"
+            + $"評價   {rating}\n"
+            + $"篝火   {Mathf.Max(0, Mathf.RoundToInt(_coreHealth))} / {Mathf.RoundToInt(_level.StartingCoreHealth)}\n"
+            + $"擊退妖怪   {_defeatedEnemies}\n"
+            + $"建造魔法塔   {_builtTowers}\n"
+            + $"剩餘星砂   {_essence}\n\n"
+            + "F2 重新挑戰　　F3 返回關卡地圖";
+    }
+
     private void ShowMessage(string message, double duration, Color? color = null)
     {
         if (_messageLabel == null)
@@ -465,17 +666,20 @@ public partial class Main : Node2D
     {
         StopAllTowers();
         _finished = true;
+        HideTutorial();
         ProgressManager progress = GetNode<ProgressManager>("/root/ProgressManager");
         progress.CompleteLevel(_level.Id);
-        _messageLabel.Text =
-            $"{_level.Title} 完成！下一個區域已解鎖。按 F2 重玩，按 F3 返回關卡地圖。";
+        _messageLabel.Text = $"{_level.Title} 完成！";
+        ShowResultPanel($"{_level.Title} · 通關", BuildResultStats(true));
     }
 
     private void FailLevel()
     {
         StopAllTowers();
         _finished = true;
-        _messageLabel.Text = "希望篝火熄滅了。按 F2 重新挑戰，按 F3 返回關卡地圖。";
+        HideTutorial();
+        _messageLabel.Text = "希望篝火熄滅了。";
+        ShowResultPanel($"{_level.Title} · 防線失守", BuildResultStats(false));
     }
 
     private void StopAllTowers()

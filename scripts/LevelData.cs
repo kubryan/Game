@@ -12,6 +12,9 @@ public static class GameBalance
     public const float FloatingTextRiseSpeed = 36f;
     public const double FloatingTextDuration = 0.78;
     public const double WarningMessageDuration = 2.2;
+    public const double TutorialDuration = 8.0;
+    public const float ThreeStarCoreHealthRatio = 0.75f;
+    public const float TwoStarCoreHealthRatio = 0.45f;
     public const int SpellCount = 4;
     public const int TowerTypeCount = 4;
 
