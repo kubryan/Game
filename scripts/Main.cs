@@ -423,6 +423,12 @@ public partial class Main : Node2D
             if (node is Tower tower && IsInstanceValid(tower))
                 tower.StopAttacking();
         }
+
+        foreach (Node node in GetTree().GetNodesInGroup("projectiles"))
+        {
+            if (node is Projectile projectile && IsInstanceValid(projectile))
+                projectile.QueueFree();
+        }
     }
 
     public override void _Draw()

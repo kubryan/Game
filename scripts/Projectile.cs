@@ -10,9 +10,16 @@ public partial class Projectile : Node2D
     public float ImpactSlowDuration { get; set; }
     public Color ProjectileColor { get; set; } = Colors.White;
 
-    private double _lifeRemaining = 2.5;
+        private double _lifeRemaining = 2.5;
+
+    public override void _Ready()
+    {
+        AddToGroup("projectiles");
+        QueueRedraw();
+    }
 
     public override void _Process(double delta)
+
     {
         _lifeRemaining -= delta;
         if (_lifeRemaining <= 0 || Target == null || !IsInstanceValid(Target))
